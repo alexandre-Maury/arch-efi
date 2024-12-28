@@ -76,3 +76,141 @@ done
 
 clear
 
+partitions=$(lsblk -n -o NAME "/dev/$disk" | grep -v "^$disk$" | sed -n "s/^[[:graph:]]*${disk}\([0-9]*\)$/${disk}\1/p")
+
+# Vérifie si des partitions existent
+if [ -z "$partitions" ]; then
+
+    ##############################################################################
+    ## Disque vierge                                                    
+    ##############################################################################
+
+    # TODO: Implémenter cette partie plus tard
+    # Cette section de code n'est pas terminée, elle nécessite encore du travail.
+    echo
+    echo "Status : Le disque est vierge"
+    echo "Device : /dev/$disk"
+    echo "Taille : $(lsblk -n -o SIZE "/dev/$disk" | head -1)"
+    echo "Type   : $(lsblk -n -o TRAN "/dev/$disk")"
+    echo
+
+    # Afficher le menu
+    while true; do
+
+        log_prompt "INFO" && echo "Que souhaitez-vous faire : " && echo
+
+        echo "1) Installation de Arch Linux"
+        echo "2) Annuler"
+        echo
+
+        log_prompt "INFO" && read -p "Votre Choix (1-2) " choice && echo 
+
+        case $choice in
+            1)  
+                clear
+                echo
+                log_prompt "INFO" && read -p "Souhaitez-vous procéder au formatage du disque "/dev/$disk" ? (y/n) : " choice && echo
+                if [[ "$choice" =~ ^[yY]$ ]]; then
+                    erase_disk "$disk"                    
+                fi
+                preparation_disk "$disk"
+                show_disk_partitions "Montage des partitions" "$disk"
+                mount_partitions "$disk"
+                show_disk_partitions "Montage des partitions terminée" "$disk"
+                install_base "$disk"
+                install_base_chroot "$disk"
+                install_base_secu
+                activate_service
+
+                log_prompt "INFO" && echo "Installation terminée ==> redémarrer votre systeme"
+
+                break
+                ;;
+            2)
+                log_prompt "WARNING" && echo "Opération annulée"
+                exit 0
+                ;;
+            *)
+                log_prompt "WARNING" && echo "Choix invalide"
+                ;;
+        esac
+    done
+
+
+
+else
+
+    ##############################################################################
+    ## Disque partitionné                                                    
+    ##############################################################################
+
+    # TODO: Implémenter cette partie plus tard
+    # Cette section de code n'est pas terminée, elle nécessite encore du travail.
+    echo
+    echo "$(show_disk_partitions "Le disque n'est pas vierge" "$disk")"
+    echo
+
+    # Afficher le menu
+    while true; do
+
+        log_prompt "INFO" && echo "Que souhaitez-vous faire : " && echo
+
+        echo "1) Nettoyage du disque          ==> Suppression des données sur /dev/$disk"
+        echo "2) Installation de Arch Linux   ==> Espace total sur le disque /dev/$disk"
+        echo "3) Installation en double boot  ==> Windows - Arch Linux"
+        echo
+        echo "0) Annuler"
+        echo
+
+        log_prompt "INFO" && read -p "Votre Choix (1-5) " choice && echo
+
+        case $choice in
+            1)
+                clear
+                erase_disk "$disk"
+                break
+                ;;
+            2)
+                clear
+                echo
+                log_prompt "INFO" && read -p "Souhaitez-vous procéder au formatage du disque "/dev/$disk" ? (y/n) : " choice && echo
+                if [[ "$choice" =~ ^[yY]$ ]]; then
+                    erase_disk "$disk"                    
+                fi
+                preparation_disk "$disk"
+                show_disk_partitions "Montage des partitions" "$disk"
+                mount_partitions "$disk"
+                show_disk_partitions "Montage des partitions terminée" "$disk"
+                install_base "$disk"
+                install_base_chroot "$disk"
+                install_base_secu
+                activate_service
+
+                log_prompt "INFO" && echo "Installation terminée ==> redémarrer votre systeme"
+                break
+                ;;
+            3)
+                clear
+                echo
+                show_disk_partitions "Montage des partitions" "$disk"
+                echo
+                dual_boot
+                install_base "$disk"
+                install_base_chroot "$disk"
+                # install_base_secu
+                # activate_service
+                log_prompt "INFO" && echo "A venir" && echo
+
+                break
+                ;;
+
+            0)
+                log_prompt "WARNING" && echo "Opération annulée"
+                exit 0
+                ;;
+            *)
+                echo "Choix invalide"
+                ;;
+        esac
+    done
+fi

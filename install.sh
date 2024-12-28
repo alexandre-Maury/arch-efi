@@ -25,3 +25,19 @@ source $SCRIPT_DIR/functions/functions_disk.sh
 source $SCRIPT_DIR/functions/functions_install.sh  
 # Charge un fichier contenant des fonctions dédiées à l'installation du système.
 
+##############################################################################
+## Vérifier les privilèges root
+##############################################################################
+if [ "$EUID" -ne 0 ]; then
+  log_prompt "ERROR" && echo "Veuillez exécuter ce script en tant qu'utilisateur root."
+  exit 1
+fi
+
+##############################################################################
+## Valide la connexion internet                                                          
+##############################################################################
+echo
+log_prompt "INFO" && echo "Vérification de la connexion Internet"
+$(ping -c 3 archlinux.org &>/dev/null) || (log_prompt "ERROR" && echo "Pas de connexion Internet" && echo)
+sleep 2
+

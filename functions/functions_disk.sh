@@ -259,13 +259,8 @@ preparation_disk() {
     echo "Procédure de création des partitions en cours..."
 
     # Création de la table de partitions
-    if [[ "$MODE" == "UEFI" ]]; then
-        log_prompt "INFO" && echo "Création de la table GPT"
-        parted --script -a optimal /dev/$disk mklabel gpt || { echo "Erreur lors de la création de la table GPT"; exit 1; }
-    else
-        log_prompt "INFO" && echo "Création de la table MBR"
-        parted --script -a optimal /dev/$disk mklabel msdos || { echo "Erreur lors de la création de la table MBR"; exit 1; }              
-    fi
+    log_prompt "INFO" && echo "Création de la table GPT"
+    parted --script -a optimal /dev/$disk mklabel gpt || { echo "Erreur lors de la création de la table GPT"; exit 1; }
 
     local partition_prefix=$([[ "$disk_type" == "nvme" ]] && echo "p" || echo "")
 
@@ -296,19 +291,11 @@ preparation_disk() {
         # Gestion des flags spécifiques
         case "$name" in
             "boot") 
-                if [[ "$MODE" == "UEFI" ]]; then
-                    log_prompt "INFO" && echo "Activation de la partition boot $partition_device en mode UEFI"
-                    parted --script -a optimal "/dev/$disk" set "$partition_number" esp on || { 
-                        echo "Erreur lors de l'activation de la partition $partition_device"
-                        exit 1 
-                    }
-                else
-                    log_prompt "INFO" && echo "Activation de la partition boot $partition_device en mode LEGACY"
-                    parted --script -a optimal /dev/$disk set "$partition_number" boot on || { 
-                        echo "Erreur lors de l'activation de la partition $partition_device"
-                        exit 1 
-                    }
-                fi
+                log_prompt "INFO" && echo "Activation de la partition boot $partition_device en mode UEFI"
+                parted --script -a optimal "/dev/$disk" set "$partition_number" esp on || { 
+                    echo "Erreur lors de l'activation de la partition $partition_device"
+                    exit 1 
+                }
                 ;;
 
             "swap") 
@@ -325,13 +312,6 @@ preparation_disk() {
         case "$fs_type" in
             "btrfs")
                 mkfs.btrfs -f -L "$name" "$partition_device" || {
-                    log_prompt "ERROR" && echo "Erreur lors du formatage de la partition $partition_device en $fs_type"
-                    exit 1
-                }
-                ;;
-
-            "ext4")
-                mkfs.ext4 -L "$name" "$partition_device" || {
                     log_prompt "ERROR" && echo "Erreur lors du formatage de la partition $partition_device en $fs_type"
                     exit 1
                 }
@@ -445,9 +425,6 @@ mount_partitions() {
             mount -o defaults,noatime,compress=zstd,commit=120,subvol=@cache "/dev/$NAME" "${MOUNT_POINT}/var/cache"
             mount -o defaults,noatime,compress=zstd,commit=120,subvol=@snapshots "/dev/$NAME" "${MOUNT_POINT}/snapshots"
 
-        elif [[ "$FSTYPE" == "ext4" ]]; then
-            # Pour les autres systèmes de fichiers
-            mount "/dev/$NAME" "${MOUNT_POINT}"
         fi
     fi
 

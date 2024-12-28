@@ -209,12 +209,6 @@ preparation_disk() {
     local disk_type=$(detect_disk_type "$disk")
     local partition_number=1
     local start="1MiB"
-    # local disk_size=$(lsblk -d -o SIZE --noheadings "/dev/$disk" | tr -d '[:space:]')
-    # local disk_size_mib=$(convert_to_mib "$disk_size")
-
-    ##############################################################################
-    ## Affichage des informations avant de procéder à la création des partitions
-    ##############################################################################
 
     # Affichage des informations de configuration
     echo "Configuration actuelle :"
@@ -229,8 +223,6 @@ preparation_disk() {
     echo "Port SSH : $SSH_PORT"
     echo
     echo "Point de montage principal : $MOUNT_POINT"
-    echo "Fichier swap activé : $FILE_SWAP"
-    echo "Type de système de fichiers par défaut : $DEFAULT_FS_TYPE"
     echo "Mode de démarrage détecté : $MODE"
     echo "Chargeur de démarrage utilisé : $BOOTLOADER"
     echo

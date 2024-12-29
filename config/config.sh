@@ -11,14 +11,7 @@ KEYMAP="fr"
 HOSTNAME="archlinux-alexandre"
 SSH_PORT=2222  # Remplacez 2222 par le port que vous souhaitez utiliser
 
-##############################################################################
-## Configuration générale                                              
-##############################################################################
-
 MOUNT_POINT="/mnt" # Point de montage
-
-
- 
 
 ## Toute modification incorrecte peut entraîner des perturbations lors de l'installation                                          
 DEFAULT_BOOT_TYPE="fat32"

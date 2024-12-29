@@ -15,10 +15,12 @@ KEYMAP="fr"
 HOSTNAME="archlinux-alexandre"
 SSH_PORT=2222  # Remplacez 2222 par le port que vous souhaitez utiliser
 
-MOUNT_POINT="/mnt" # Point de montage                                      
+MOUNT_POINT="/mnt" # Point de montage    
+                                  
 DEFAULT_BOOT_TYPE="fat32"
 DEFAULT_SWAP_TYPE="linux-swap"
 DEFAULT_FS_TYPE="btrfs"
+
 DEFAULT_BOOT_SIZE="512MiB"
 DEFAULT_SWAP_SIZE="8GiB"
 DEFAULT_FS_SIZE="100%"

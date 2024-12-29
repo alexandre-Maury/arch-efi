@@ -185,102 +185,32 @@ install_base_chroot() {
 
     echo "mkinitcpio terminé avec succès."
 
-    while true; do
-        if [[ "${BOOTLOADER}" == "grub" ]]; then
-            log_prompt "INFO" && echo "arch-chroot - Installation de GRUB" 
-            arch-chroot ${MOUNT_POINT} pacman -S grub os-prober --noconfirm
+    arch-chroot ${MOUNT_POINT} pacman -S btrfs-progs efibootmgr os-prober --noconfirm 
+    root_uuid=$(blkid -s UUID -o value /dev/${root_part})
+    root_options="root=UUID=${root_uuid} rootflags=subvol=@ rw"
 
-            case "$root_fs" in
+    # arch-chroot ${MOUNT_POINT} bootctl --path=/boot install
+    arch-chroot ${MOUNT_POINT} bootctl --esp-path=/boot --boot-path=/boot install
 
-                "btrfs")
-                    arch-chroot ${MOUNT_POINT} pacman -S btrfs-progs --noconfirm 
-                    ;;
-            esac
+    {
+        echo "title   Arch Linux"
+        echo "linux   /vmlinuz-linux"
+        echo "initrd  /${proc_ucode}"
+        echo "initrd  /initramfs-linux.img"
 
-            if [[ "$MODE" == "UEFI" ]]; then
-                arch-chroot ${MOUNT_POINT} pacman -S efibootmgr --noconfirm 
-                # arch-chroot ${MOUNT_POINT} grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
-                arch-chroot ${MOUNT_POINT} grub-install --target=x86_64-efi --bootloader-id=grub-uefi --recheck
-
-            elif [[ "$MODE" == "LEGACY" ]]; then
-                arch-chroot ${MOUNT_POINT} grub-install --target=i386-pc --no-floppy /dev/"${disk}"
-
-            else
-                log_prompt "ERROR" && echo "Une erreur est survenue : $MODE non reconnu." && exit 1
-            fi
-            
-            log_prompt "INFO" && echo "arch-chroot - configuration de grub"
-
-            if [[ -n "${kernel_option}" ]]; then
-                sed -i "s/^GRUB_CMDLINE_LINUX_DEFAULT=\"/&$kernel_option /" /etc/default/grub
-            fi
-
-
-            if grep -q "^#GRUB_DISABLE_OS_PROBER=false" "/etc/default/grub"; then
-                sed -i 's/^#GRUB_DISABLE_OS_PROBER=false/GRUB_DISABLE_OS_PROBER=false/' /etc/default/grub
-                echo "La ligne 'GRUB_DISABLE_OS_PROBER=false' a été décommentée."
-            else
-                echo "La ligne 'GRUB_DISABLE_OS_PROBER=false' est déjà active ou absente."
-            fi
-
-            arch-chroot ${MOUNT_POINT} grub-mkconfig -o /boot/grub/grub.cfg
-            
-            if [[ -n "${proc_ucode}" ]]; then
-                echo "initrd /boot/$proc_ucode" >> ${MOUNT_POINT}/boot/grub/grub.cfg
-            fi
-
-            break  
-
-        elif [[ "${BOOTLOADER}" == "systemd-boot" && "$MODE" == "UEFI" ]]; then
-
-            case "$root_fs" in
-                "ext4")
-                    root_options="root=/dev/${root_part} rw"
-                    ;;
-                "btrfs")
-                    arch-chroot ${MOUNT_POINT} pacman -S btrfs-progs --noconfirm 
-                    root_uuid=$(blkid -s UUID -o value /dev/${root_part})
-                    root_options="root=UUID=${root_uuid} rootflags=subvol=@ rw"
-                    ;;
-                *)
-                    log_prompt "ERROR" && echo "Système de fichiers non pris en charge : ${root_fs}" && exit 1
-                    ;;
-            esac
-
-            log_prompt "INFO" && echo "arch-chroot - Installation de systemd-boot"
-            arch-chroot ${MOUNT_POINT} pacman -S efibootmgr os-prober --noconfirm 
-            # arch-chroot ${MOUNT_POINT} bootctl --path=/boot install
-            arch-chroot ${MOUNT_POINT} bootctl --esp-path=/boot --boot-path=/boot install
-
-            {
-                echo "title   Arch Linux"
-                echo "linux   /vmlinuz-linux"
-                echo "initrd  /${proc_ucode}"
-                echo "initrd  /initramfs-linux.img"
-
-                if [[ -n "${kernel_option}" ]]; then
-                    echo "options ${root_options} $kernel_option"
-                else
-                    echo "options ${root_options}"
-                fi
-            } > ${MOUNT_POINT}/boot/loader/entries/arch.conf
-
-            {
-                echo "default arch.conf"
-                echo "timeout 4"
-                echo "console-mode max"
-                echo "editor no"
-            } > ${MOUNT_POINT}/boot/loader/loader.conf
-
-
-            break
-
+        if [[ -n "${kernel_option}" ]]; then
+            echo "options ${root_options} $kernel_option"
         else
-            log_prompt "ERROR" && echo "Bootloader ${BOOTLOADER} non reconnu."
-            log_prompt "INFO" && read -p "Veuillez saisir un bootloader valide (grub/systemd-boot) : " BOOTLOADER
-            continue  # Revient au début de la boucle pour recommencer avec le nouveau choix
+            echo "options ${root_options}"
         fi
-    done
+    } > ${MOUNT_POINT}/boot/loader/entries/arch.conf
+
+    {
+        echo "default arch.conf"
+        echo "timeout 4"
+        echo "console-mode max"
+        echo "editor no"
+    } > ${MOUNT_POINT}/boot/loader/loader.conf
 
 }
 

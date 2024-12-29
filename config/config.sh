@@ -16,7 +16,7 @@ HOSTNAME="archlinux-alexandre"
 SSH_PORT=2222  # Remplacez 2222 par le port que vous souhaitez utiliser
 
 MOUNT_POINT="/mnt" # Point de montage    
-                                  
+
 DEFAULT_BOOT_TYPE="fat32"
 DEFAULT_SWAP_TYPE="linux-swap"
 DEFAULT_FS_TYPE="btrfs"
@@ -31,11 +31,8 @@ PARTITIONS_CREATE=(
     "root:${DEFAULT_FS_SIZE}:${DEFAULT_FS_TYPE}"
 )
 
-# Détection automatique du mode de démarrage (UEFI ou Legacy)
-if [ -d /sys/firmware/efi ]; then
-    MODE="UEFI"
-    BOOTLOADER="systemd-boot"  # Utilisation de systemd-boot pour UEFI
-fi
+
+BOOTLOADER="systemd-boot"  # Utilisation de systemd-boot pour UEFI
 
 # Liste des sous-volumes BTRFS à créer
 BTRFS_SUBVOLUMES=("@" "@root" "@home" "@srv" "@log" "@cache" "@tmp" "@snapshots")

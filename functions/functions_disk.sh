@@ -239,7 +239,7 @@ preparation_disk() {
     echo "Création des partitions sur /dev/$disk :"
     printf "%-10s %-10s %-10s\n" "Partition" "Taille" "Type"
     echo "--------------------------------"
-    for part in "${PARTITIONS[@]}"; do
+    for part in "${PARTITIONS_CREATE[@]}"; do
         IFS=':' read -r name size type <<< "$part"
         printf "%-10s %-10s %-10s\n" "$name" "$size" "$type"
     done
@@ -251,7 +251,7 @@ preparation_disk() {
     parted --script /dev/$disk mklabel gpt
 
     # Créer chaque partition
-    for part in "${PARTITIONS[@]}"; do
+    for part in "${PARTITIONS_CREATE[@]}"; do
         IFS=':' read -r name size type <<< "$part"
         local device="/dev/${disk}${partition_prefix}${partition_num}"
         local end=$([ "$size" = "100%" ] && echo "100%" || echo "$(convert_to_mib "$size")MiB")
@@ -281,247 +281,183 @@ preparation_disk() {
     echo "Partitionnement terminé avec succès"
 }
 
-# preparation_disk() {
-#     local disk="$1"
-#     local disk_type=$(detect_disk_type "$disk")
-#     local partition_number=1
-#     local start="1MiB"
-
-#     # Affichage des informations de configuration
-#     echo "Configuration actuelle :"
-#     echo "----------------------------"
-#     echo "Zone : $ZONE"
-#     echo "Pays : $PAYS"
-#     echo "Ville : $CITY"
-#     echo "Langue : $LANG"
-#     echo "Locale : $LOCALE"
-#     echo "Disposition du clavier : $KEYMAP"
-#     echo "Nom d'hôte : $HOSTNAME"
-#     echo "Port SSH : $SSH_PORT"
-#     echo
-#     echo "Point de montage principal : $MOUNT_POINT"
-#     echo "Mode de démarrage détecté : $MODE"
-#     echo "Chargeur de démarrage utilisé : $BOOTLOADER"
-#     echo
-
-#     echo "Partitions à créer :"
-#     echo "----------------------------"
-#     for partition in "${PARTITIONS_CREATE[@]}"; do
-#         IFS=":" read -r name size fstype <<< "$partition"
-#         echo "==> Partition : $name - Taille : $size - Type : $fstype"
-#     done
-
-#     echo "----------------------------"
-#     echo
-#     echo "Veuillez vérifier les informations ci-dessus avant de continuer."
-#     log_prompt "INFO" && echo "Vous pouvez modifier le fichier config.sh pour adapter la configuration selon vos besoins."
-#     echo
-#     # Demander confirmation à l'utilisateur pour procéder à la création des partitions
-#     log_prompt "INFO" && read -rp "Souhaitez-vous continuer avec cette configuration ? (y/n) : " user_input
-
-#     if [[ "$user_input" != "y" && "$user_input" != "Y" ]]; then
-#         echo "Annulation du processus. Aucune partition n'a été créée."
-#         exit 1
-#     fi
-
-#     # Si l'utilisateur accepte, procéder à la création des partitions
-#     echo "Procédure de création des partitions en cours..."
-
-#     # Création de la table de partitions
-#     log_prompt "INFO" && echo "Création de la table GPT"
-#     parted --script -a optimal /dev/$disk mklabel gpt || { echo "Erreur lors de la création de la table GPT"; exit 1; }
-
-#     local partition_prefix=$([[ "$disk_type" == "nvme" ]] && echo "p" || echo "")
-
-#     # Boucle de création des partitions
-#     for partition_info in "${PARTITIONS_CREATE[@]}"; do
-#         IFS=':' read -r name size fs_type <<< "$partition_info"
-        
-#         local partition_device="/dev/${disk}${partition_prefix}${partition_number}"
-
-#         # Si la taille est "100%", utiliser l'espace restant
-#         if [[ "$size" == "100%" ]]; then
-#             # Utilisation de l'espace restant pour la partition
-#             end="100%"
-#         else
-#             # Si ce n'est pas "100%", calculer la fin de la partition
-#             local start_in_mib=$(convert_to_mib "$start")
-#             local size_in_mib=$(convert_to_mib "$size")
-#             local end_in_mib=$((start_in_mib + size_in_mib))
-#             end="${end_in_mib}MiB"
-#         fi
-
-#         log_prompt "INFO" && echo "Création de la partition $partition_device"
-#         parted --script -a optimal "/dev/$disk" mkpart primary "$start" "$end" || { 
-#             echo "Erreur lors de la création de la partition $partition_device"
-#             exit 1 
-#         }
-
-#         # Gestion des flags spécifiques
-#         case "$name" in
-#             "boot") 
-#                 log_prompt "INFO" && echo "Activation de la partition boot $partition_device en mode UEFI"
-#                 parted --script -a optimal "/dev/$disk" set "$partition_number" esp on || { 
-#                     echo "Erreur lors de l'activation de la partition $partition_device"
-#                     exit 1 
-#                 }
-#                 ;;
-
-#             "swap") 
-#                 log_prompt "INFO" && echo "Activation de la partition swap $partition_device"
-#                 parted --script -a optimal "/dev/$disk" set "$partition_number" swap on || { 
-#                     echo "Erreur lors de l'activation de la partition $partition_device"
-#                     exit 1 
-#                 }
-#                 ;;
-#         esac
-
-#         # Formatage des partitions
-#         log_prompt "INFO" && echo "Formatage de la partition $partition_device en $fs_type"
-#         case "$fs_type" in
-#             "btrfs")
-#                 mkfs.btrfs -f -L "$name" "$partition_device" || {
-#                     log_prompt "ERROR" && echo "Erreur lors du formatage de la partition $partition_device en $fs_type"
-#                     exit 1
-#                 }
-#                 ;;
-
-#             "fat32")
-#                 mkfs.vfat -F32 -n "$name" "$partition_device" || {
-#                     log_prompt "ERROR" && echo "Erreur lors du formatage de la partition $partition_device en $fs_type"
-#                     exit 1
-#                 }
-#                 ;;
-
-#             "linux-swap")
-#                 mkswap -L "$name" "$partition_device" && swapon "$partition_device" || {
-#                     log_prompt "ERROR" && echo "Erreur lors du formatage ou de l'activation de la partition $partition_device en $fs_type"
-#                     exit 1
-#                 }
-#                 ;;
-
-#             *)
-#                 log_prompt "ERROR" && echo "type de fichier non reconnu : $fs_type"
-#                 exit 1
-#                 ;;
-#         esac
-
-#         start="$end"
-#         ((partition_number++))
-#     done
-
-# }
-
 mount_partitions() {
-    
     local disk="$1"
-    local partitions=()
-    local root_partition=""
-    local boot_partition=""
-    local home_partition=""
-    local other_partitions=()
-
-    # Récupération des partitions du disque
-    while IFS= read -r partition; do
-        partitions+=("$partition")
-    done < <(lsblk -n -o NAME "/dev/$disk" | grep -v "^$disk$" | sed -n "s/^[[:graph:]]*${disk}\([0-9]*\)$/${disk}\1/p")
-
-    # Trier et organiser les partitions
+    
+    # Récupérer toutes les partitions du disque
+    local partitions=($(lsblk -n -o NAME "/dev/$disk" | grep -v "^$disk$" | grep "${disk}[0-9]"))
+    
+    # Identifier les partitions par leur label
+    local root_part="" boot_part="" home_part=""
     for part in "${partitions[@]}"; do
-        local part_label=$(lsblk "/dev/$part" -n -o LABEL)
-        case "$part_label" in
-            "root") 
-                root_partition="$part"
-                ;;
-            "boot") 
-                boot_partition="$part"
-                ;;
-            "home")
-                home_partition="$part"
-                ;;
-            *)
-                other_partitions+=("$part")
-                ;;
+        local label=$(lsblk "/dev/$part" -n -o LABEL)
+        case "$label" in
+            "root") root_part=$part ;;
+            "boot") boot_part=$part ;;
+            "home") home_part=$part ;;
+            "swap") continue ;;
+            *) echo "Partition ignorée: /dev/$part (Label: $label)" ;;
         esac
     done
 
-    # Monter la partition root EN PREMIER
-    if [[ -n "$root_partition" ]]; then
-        local NAME=$(lsblk "/dev/$root_partition" -n -o NAME)
-        local FSTYPE=$(lsblk "/dev/$root_partition" -n -o FSTYPE)
-        local LABEL=$(lsblk "/dev/$root_partition" -n -o LABEL)
-        local SIZE=$(lsblk "/dev/$root_partition" -n -o SIZE)
-
-        log_prompt "INFO" && echo "Traitement de la partition : /dev/$NAME (Label: $LABEL, FS: $FSTYPE)"
-
-        # Logique de montage de la partition root (identique à votre script original)
-        if [[ "$FSTYPE" == "btrfs" ]]; then
-            # Monter temporairement la partition
-            mount "/dev/$NAME" "${MOUNT_POINT}"
-
-            # Créer les sous-volumes de base
-            btrfs subvolume create "${MOUNT_POINT}/@"
-            btrfs subvolume create "${MOUNT_POINT}/@root"
-            btrfs subvolume create "${MOUNT_POINT}/@home"
-            btrfs subvolume create "${MOUNT_POINT}/@srv"
-            btrfs subvolume create "${MOUNT_POINT}/@log"
-            btrfs subvolume create "${MOUNT_POINT}/@cache"
-            btrfs subvolume create "${MOUNT_POINT}/@tmp"
-            btrfs subvolume create "${MOUNT_POINT}/@snapshots"
-            
-            # Démonter la partition temporaire
-            umount "${MOUNT_POINT}"
-
-            # Remonter les sous-volumes avec des options spécifiques
-            echo "Montage des sous-volumes Btrfs avec options optimisées..."
-            mount -o defaults,noatime,compress=zstd,commit=120,subvol=@ "/dev/$NAME" "${MOUNT_POINT}"
-
-            # Créer les sous-répertoires
-            mkdir -p "${MOUNT_POINT}/root"
-            mkdir -p "${MOUNT_POINT}/home"
-            mkdir -p "${MOUNT_POINT}/srv"
-            mkdir -p "${MOUNT_POINT}/var/log"
-            mkdir -p "${MOUNT_POINT}/var/cache/"
-            mkdir -p "${MOUNT_POINT}/tmp"
-            mkdir -p "${MOUNT_POINT}/snapshots"
-
-            # Montage des sous-volumes
-            mount -o defaults,noatime,compress=zstd,commit=120,subvol=@root "/dev/$NAME" "${MOUNT_POINT}/root"
-            mount -o defaults,noatime,compress=zstd,commit=120,subvol=@home "/dev/$NAME" "${MOUNT_POINT}/home"
-            mount -o defaults,noatime,compress=zstd,commit=120,subvol=@tmp "/dev/$NAME" "${MOUNT_POINT}/tmp"
-            mount -o defaults,noatime,compress=zstd,commit=120,subvol=@srv "/dev/$NAME" "${MOUNT_POINT}/srv"
-            mount -o defaults,noatime,compress=zstd,commit=120,subvol=@log "/dev/$NAME" "${MOUNT_POINT}/var/log"
-            mount -o defaults,noatime,compress=zstd,commit=120,subvol=@cache "/dev/$NAME" "${MOUNT_POINT}/var/cache"
-            mount -o defaults,noatime,compress=zstd,commit=120,subvol=@snapshots "/dev/$NAME" "${MOUNT_POINT}/snapshots"
-
-        fi
-    fi
-
-    # Monter la partition boot 
-    if [[ -n "$boot_partition" ]]; then
-        local NAME=$(lsblk "/dev/$boot_partition" -n -o NAME)
-        mkdir -p "${MOUNT_POINT}/boot"
-        mount "/dev/$NAME" "${MOUNT_POINT}/boot"
-    fi
-
-    # Monter la partition home 
-    if [[ -n "$home_partition" ]]; then
-        local NAME=$(lsblk "/dev/$home_partition" -n -o NAME)
-        mkdir -p "${MOUNT_POINT}/home"  
-        mount "/dev/$NAME" "${MOUNT_POINT}/home"
-    fi
-
-    # Monter les autres partitions
-    for partition in "${other_partitions[@]}"; do
-        local part_label=$(lsblk "/dev/$partition" -n -o LABEL)
+    # Monter et configurer la partition root avec BTRFS
+    if [[ -n "$root_part" ]]; then
+        echo "Configuration de la partition root (/dev/$root_part)..."
         
-        # Ignorer la partition swap
-        if [[ "$part_label" == "swap" ]]; then
-            log_prompt "INFO" && echo "Partition swap déjà monté"
-            continue
-        fi
+        # Montage initial pour création des sous-volumes
+        mount "/dev/$root_part" "${MOUNT_POINT}"
+        
+        # Créer les sous-volumes BTRFS
+        for subvol in "${BTRFS_SUBVOLUMES[@]}"; do
+            btrfs subvolume create "${MOUNT_POINT}/${subvol}"
+        done
+        
+        # Démonter pour remonter avec les sous-volumes
+        umount "${MOUNT_POINT}"
+        
+        # Monter le sous-volume principal
+        mount -o "${BTRFS_MOUNT_OPTIONS},subvol=@" "/dev/$root_part" "${MOUNT_POINT}"
+        
+        # Créer et monter les points de montage pour chaque sous-volume
+        declare -A mount_points=(
+            ["@root"]="/root"
+            ["@home"]="/home"
+            ["@srv"]="/srv"
+            ["@log"]="/var/log"
+            ["@cache"]="/var/cache"
+            ["@tmp"]="/tmp"
+            ["@snapshots"]="/snapshots"
+        )
+        
+        for subvol in "${!mount_points[@]}"; do
+            local mount_point="${MOUNT_POINT}${mount_points[$subvol]}"
+            mkdir -p "$mount_point"
+            mount -o "${BTRFS_MOUNT_OPTIONS},subvol=${subvol}" "/dev/$root_part" "$mount_point"
+        done
+    fi
 
-        # Ajouter ici toute logique supplémentaire pour d'autres partitions étiquetées différemment
-        log_prompt "WARNING" && echo "Partition non traitée : /dev/$partition (Label: $part_label)"
-    done
+    # Monter la partition boot
+    if [[ -n "$boot_part" ]]; then
+        echo "Montage de la partition boot (/dev/$boot_part)..."
+        mkdir -p "${MOUNT_POINT}/boot"
+        mount "/dev/$boot_part" "${MOUNT_POINT}/boot"
+    fi
+
+    # Monter la partition home si elle est séparée
+    if [[ -n "$home_part" ]]; then
+        echo "Montage de la partition home (/dev/$home_part)..."
+        mkdir -p "${MOUNT_POINT}/home"
+        mount "/dev/$home_part" "${MOUNT_POINT}/home"
+    fi
 }
+
+# mount_partitions() {
+    
+#     local disk="$1"
+#     local partitions=()
+#     local root_partition=""
+#     local boot_partition=""
+#     local home_partition=""
+#     local other_partitions=()
+
+#     # Récupération des partitions du disque
+#     while IFS= read -r partition; do
+#         partitions+=("$partition")
+#     done < <(lsblk -n -o NAME "/dev/$disk" | grep -v "^$disk$" | sed -n "s/^[[:graph:]]*${disk}\([0-9]*\)$/${disk}\1/p")
+
+#     # Trier et organiser les partitions
+#     for part in "${partitions[@]}"; do
+#         local part_label=$(lsblk "/dev/$part" -n -o LABEL)
+#         case "$part_label" in
+#             "root") 
+#                 root_partition="$part"
+#                 ;;
+#             "boot") 
+#                 boot_partition="$part"
+#                 ;;
+#             "home")
+#                 home_partition="$part"
+#                 ;;
+#             *)
+#                 other_partitions+=("$part")
+#                 ;;
+#         esac
+#     done
+
+#     # Monter la partition root EN PREMIER
+#     if [[ -n "$root_partition" ]]; then
+#         local NAME=$(lsblk "/dev/$root_partition" -n -o NAME)
+#         local FSTYPE=$(lsblk "/dev/$root_partition" -n -o FSTYPE)
+#         local LABEL=$(lsblk "/dev/$root_partition" -n -o LABEL)
+#         local SIZE=$(lsblk "/dev/$root_partition" -n -o SIZE)
+
+#         log_prompt "INFO" && echo "Traitement de la partition : /dev/$NAME (Label: $LABEL, FS: $FSTYPE)"
+
+#         # Logique de montage de la partition root (identique à votre script original)
+           
+#         mount "/dev/$NAME" "${MOUNT_POINT}"
+
+#         # Créer les sous-volumes de base
+#         btrfs subvolume create "${MOUNT_POINT}/@"
+#         btrfs subvolume create "${MOUNT_POINT}/@root"
+#         btrfs subvolume create "${MOUNT_POINT}/@home"
+#         btrfs subvolume create "${MOUNT_POINT}/@srv"
+#         btrfs subvolume create "${MOUNT_POINT}/@log"
+#         btrfs subvolume create "${MOUNT_POINT}/@cache"
+#         btrfs subvolume create "${MOUNT_POINT}/@tmp"
+#         btrfs subvolume create "${MOUNT_POINT}/@snapshots"
+            
+#         # Démonter la partition temporaire
+#         umount "${MOUNT_POINT}"
+
+#         # Remonter les sous-volumes avec des options spécifiques
+#         echo "Montage des sous-volumes Btrfs avec options optimisées..."
+#         mount -o defaults,noatime,compress=zstd,commit=120,subvol=@ "/dev/$NAME" "${MOUNT_POINT}"
+
+#         # Créer les sous-répertoires
+#         mkdir -p "${MOUNT_POINT}/root"
+#         mkdir -p "${MOUNT_POINT}/home"
+#         mkdir -p "${MOUNT_POINT}/srv"
+#         mkdir -p "${MOUNT_POINT}/var/log"
+#         mkdir -p "${MOUNT_POINT}/var/cache/"
+#         mkdir -p "${MOUNT_POINT}/tmp"
+#         mkdir -p "${MOUNT_POINT}/snapshots"
+
+#         # Montage des sous-volumes
+#         mount -o defaults,noatime,compress=zstd,commit=120,subvol=@root "/dev/$NAME" "${MOUNT_POINT}/root"
+#         mount -o defaults,noatime,compress=zstd,commit=120,subvol=@home "/dev/$NAME" "${MOUNT_POINT}/home"
+#         mount -o defaults,noatime,compress=zstd,commit=120,subvol=@tmp "/dev/$NAME" "${MOUNT_POINT}/tmp"
+#         mount -o defaults,noatime,compress=zstd,commit=120,subvol=@srv "/dev/$NAME" "${MOUNT_POINT}/srv"
+#         mount -o defaults,noatime,compress=zstd,commit=120,subvol=@log "/dev/$NAME" "${MOUNT_POINT}/var/log"
+#         mount -o defaults,noatime,compress=zstd,commit=120,subvol=@cache "/dev/$NAME" "${MOUNT_POINT}/var/cache"
+#         mount -o defaults,noatime,compress=zstd,commit=120,subvol=@snapshots "/dev/$NAME" "${MOUNT_POINT}/snapshots"
+#     fi
+
+#     # Monter la partition boot 
+#     if [[ -n "$boot_partition" ]]; then
+#         local NAME=$(lsblk "/dev/$boot_partition" -n -o NAME)
+#         mkdir -p "${MOUNT_POINT}/boot"
+#         mount "/dev/$NAME" "${MOUNT_POINT}/boot"
+#     fi
+
+#     # Monter la partition home 
+#     if [[ -n "$home_partition" ]]; then
+#         local NAME=$(lsblk "/dev/$home_partition" -n -o NAME)
+#         mkdir -p "${MOUNT_POINT}/home"  
+#         mount "/dev/$NAME" "${MOUNT_POINT}/home"
+#     fi
+
+#     # Monter les autres partitions
+#     for partition in "${other_partitions[@]}"; do
+#         local part_label=$(lsblk "/dev/$partition" -n -o LABEL)
+        
+#         # Ignorer la partition swap
+#         if [[ "$part_label" == "swap" ]]; then
+#             log_prompt "INFO" && echo "Partition swap déjà monté"
+#             continue
+#         fi
+
+#         # Ajouter ici toute logique supplémentaire pour d'autres partitions étiquetées différemment
+#         log_prompt "WARNING" && echo "Partition non traitée : /dev/$partition (Label: $part_label)"
+#     done
+# }

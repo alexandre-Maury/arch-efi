@@ -33,6 +33,12 @@ if [ -d /sys/firmware/efi ]; then
     BOOTLOADER="systemd-boot"  # Utilisation de systemd-boot pour UEFI
 fi
 
+# Liste des sous-volumes BTRFS à créer
+BTRFS_SUBVOLUMES=("@" "@root" "@home" "@srv" "@log" "@cache" "@tmp" "@snapshots")
+
+# Options de montage BTRFS par défaut
+BTRFS_MOUNT_OPTIONS="defaults,noatime,compress=zstd,commit=120"
+
 
 
 

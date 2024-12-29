@@ -119,9 +119,8 @@ while true; do
             clear
             echo
             preparation_disk "$disk"
-            show_disk_partitions "Montage des partitions" "$disk"
-            # mount_partitions "$disk"
-            # show_disk_partitions "Montage des partitions terminée" "$disk"
+            mount_partitions "$disk"
+            show_disk_partitions "Montage des partitions terminée" "$disk"
             # install_base "$disk"
             # install_base_chroot "$disk"
             # install_base_secu

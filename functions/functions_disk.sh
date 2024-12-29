@@ -236,14 +236,14 @@ preparation_disk() {
     local partition_num=1
 
     # Afficher le résumé
-    echo "Création des partitions sur /dev/$disk :"
+    log_prompt "INFO" && echo "Création des partitions sur /dev/$disk :" && echo
     printf "%-10s %-10s %-10s\n" "Partition" "Taille" "Type"
     echo "--------------------------------"
     for part in "${PARTITIONS_CREATE[@]}"; do
         IFS=':' read -r name size type <<< "$part"
         printf "%-10s %-10s %-10s\n" "$name" "$size" "$type"
     done
-
+    echo
     read -rp "Continuer ? (y/n): " confirm
     [[ "$confirm" != [yY] ]] && exit 1
 
@@ -285,16 +285,16 @@ mount_partitions() {
     local disk="$1"
     
     # Récupérer toutes les partitions du disque
-    local partitions=($(lsblk -n -o NAME "/dev/$disk" | grep -v "^$disk$" | grep "${disk}[0-9]"))
+    local partitions=($(lsblk -n -o NAME "/dev/$disk" | grep -v "^$disk$" | sed -n "s/^[[:graph:]]*${disk}\([0-9]*\)$/${disk}\1/p"))
     
     # Identifier les partitions par leur label
     local root_part="" boot_part="" home_part=""
+
     for part in "${partitions[@]}"; do
         local label=$(lsblk "/dev/$part" -n -o LABEL)
         case "$label" in
             "root") root_part=$part ;;
             "boot") boot_part=$part ;;
-            "home") home_part=$part ;;
             "swap") continue ;;
             *) echo "Partition ignorée: /dev/$part (Label: $label)" ;;
         esac
@@ -341,13 +341,6 @@ mount_partitions() {
         echo "Montage de la partition boot (/dev/$boot_part)..."
         mkdir -p "${MOUNT_POINT}/boot"
         mount "/dev/$boot_part" "${MOUNT_POINT}/boot"
-    fi
-
-    # Monter la partition home si elle est séparée
-    if [[ -n "$home_part" ]]; then
-        echo "Montage de la partition home (/dev/$home_part)..."
-        mkdir -p "${MOUNT_POINT}/home"
-        mount "/dev/$home_part" "${MOUNT_POINT}/home"
     fi
 }
 

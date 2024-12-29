@@ -3,53 +3,77 @@
 # script functions_disk.sh
 
 # Fonction pour convertir les tailles en MiB
+# convert_to_mib() {
+#     local size="$1"
+#     local numeric_size
+
+#     # Si la taille est en GiB, on la convertit en MiB (1GiB = 1024MiB)
+#     if [[ "$size" =~ ^[0-9]+GiB$ ]]; then
+#         numeric_size=$(echo "$size" | sed 's/GiB//')
+#         echo $(($numeric_size * 1024))  # Convertir en MiB
+#     # Si la taille est en GiB avec "G", convertir aussi en MiB
+#     elif [[ "$size" =~ ^[0-9]+G$ ]]; then
+#         numeric_size=$(echo "$size" | sed 's/G//')
+#         echo $(($numeric_size * 1024))  # Convertir en MiB
+#     elif [[ "$size" =~ ^[0-9]+MiB$ ]]; then
+#         # Si la taille est déjà en MiB, on la garde telle quelle
+#         echo "$size" | sed 's/MiB//'
+#     elif [[ "$size" =~ ^[0-9]+M$ ]]; then
+#         # Si la taille est en Mo (en utilisant 'M'), convertir en MiB (1 Mo = 1 MiB dans ce contexte)
+#         numeric_size=$(echo "$size" | sed 's/M//')
+#         echo "$numeric_size"
+#     elif [[ "$size" =~ ^[0-9]+%$ ]]; then
+#         # Si la taille est un pourcentage, retourner "100%" directement
+#         echo "$size"
+#     else
+#         echo "0"  # Retourne 0 si l'unité est mal définie
+#     fi
+# }
+
+# Convertit les tailles en MiB
 convert_to_mib() {
     local size="$1"
-    local numeric_size
-
-    # Si la taille est en GiB, on la convertit en MiB (1GiB = 1024MiB)
-    if [[ "$size" =~ ^[0-9]+GiB$ ]]; then
-        numeric_size=$(echo "$size" | sed 's/GiB//')
-        echo $(($numeric_size * 1024))  # Convertir en MiB
-    # Si la taille est en GiB avec "G", convertir aussi en MiB
-    elif [[ "$size" =~ ^[0-9]+G$ ]]; then
-        numeric_size=$(echo "$size" | sed 's/G//')
-        echo $(($numeric_size * 1024))  # Convertir en MiB
-    elif [[ "$size" =~ ^[0-9]+MiB$ ]]; then
-        # Si la taille est déjà en MiB, on la garde telle quelle
-        echo "$size" | sed 's/MiB//'
-    elif [[ "$size" =~ ^[0-9]+M$ ]]; then
-        # Si la taille est en Mo (en utilisant 'M'), convertir en MiB (1 Mo = 1 MiB dans ce contexte)
-        numeric_size=$(echo "$size" | sed 's/M//')
-        echo "$numeric_size"
-    elif [[ "$size" =~ ^[0-9]+%$ ]]; then
-        # Si la taille est un pourcentage, retourner "100%" directement
-        echo "$size"
-    else
-        echo "0"  # Retourne 0 si l'unité est mal définie
-    fi
-}
-
-detect_disk_type() {
-    local disk="$1"
-    case "$disk" in
-        nvme*)
-            echo "nvme"
+    case "$size" in
+        *"GiB"|*"G") 
+            echo "$size" | sed 's/[GiB|G]//' | awk '{print $1 * 1024}'
             ;;
-        sd*)
-            # Test supplémentaire pour distinguer SSD/HDD
-            local rotational=$(cat "/sys/block/$disk/queue/rotational" 2>/dev/null)
-            if [[ "$rotational" == "0" ]]; then
-                echo "ssd"
-            else
-                echo "hdd"
-            fi
+        *"MiB"|*"M")
+            echo "$size" | sed 's/[MiB|M]//'
+            ;;
+        *"%")
+            echo "$size"
             ;;
         *)
-            echo "basic"
+            echo "0"
             ;;
     esac
 }
+
+# Détermine le type de disque
+get_disk_prefix() {
+    [[ "$1" == nvme* ]] && echo "p" || echo ""
+}
+
+# detect_disk_type() {
+#     local disk="$1"
+#     case "$disk" in
+#         nvme*)
+#             echo "nvme"
+#             ;;
+#         sd*)
+#             # Test supplémentaire pour distinguer SSD/HDD
+#             local rotational=$(cat "/sys/block/$disk/queue/rotational" 2>/dev/null)
+#             if [[ "$rotational" == "0" ]]; then
+#                 echo "ssd"
+#             else
+#                 echo "hdd"
+#             fi
+#             ;;
+#         *)
+#             echo "basic"
+#             ;;
+#     esac
+# }
 
 # Fonction pour formater l'affichage de la taille d'une partition en GiB ou MiB
 format_space() {
@@ -204,136 +228,189 @@ erase_disk() {
     fi
 }
 
+# Crée et formate les partitions
 preparation_disk() {
     local disk="$1"
-    local disk_type=$(detect_disk_type "$disk")
-    local partition_number=1
+    local partition_prefix=$(get_disk_prefix "$disk")
     local start="1MiB"
+    local partition_num=1
 
-    # Affichage des informations de configuration
-    echo "Configuration actuelle :"
-    echo "----------------------------"
-    echo "Zone : $ZONE"
-    echo "Pays : $PAYS"
-    echo "Ville : $CITY"
-    echo "Langue : $LANG"
-    echo "Locale : $LOCALE"
-    echo "Disposition du clavier : $KEYMAP"
-    echo "Nom d'hôte : $HOSTNAME"
-    echo "Port SSH : $SSH_PORT"
-    echo
-    echo "Point de montage principal : $MOUNT_POINT"
-    echo "Mode de démarrage détecté : $MODE"
-    echo "Chargeur de démarrage utilisé : $BOOTLOADER"
-    echo
-
-    echo "Partitions à créer :"
-    echo "----------------------------"
-    for partition in "${PARTITIONS_CREATE[@]}"; do
-        IFS=":" read -r name size fstype <<< "$partition"
-        echo "==> Partition : $name - Taille : $size - Type : $fstype"
+    # Afficher le résumé
+    echo "Création des partitions sur /dev/$disk :"
+    printf "%-10s %-10s %-10s\n" "Partition" "Taille" "Type"
+    echo "--------------------------------"
+    for part in "${PARTITIONS[@]}"; do
+        IFS=':' read -r name size type <<< "$part"
+        printf "%-10s %-10s %-10s\n" "$name" "$size" "$type"
     done
 
-    echo "----------------------------"
-    echo
-    echo "Veuillez vérifier les informations ci-dessus avant de continuer."
-    log_prompt "INFO" && echo "Vous pouvez modifier le fichier config.sh pour adapter la configuration selon vos besoins."
-    echo
-    # Demander confirmation à l'utilisateur pour procéder à la création des partitions
-    log_prompt "INFO" && read -rp "Souhaitez-vous continuer avec cette configuration ? (y/n) : " user_input
+    read -rp "Continuer ? (y/n): " confirm
+    [[ "$confirm" != [yY] ]] && exit 1
 
-    if [[ "$user_input" != "y" && "$user_input" != "Y" ]]; then
-        echo "Annulation du processus. Aucune partition n'a été créée."
-        exit 1
-    fi
+    # Créer la table de partitions GPT
+    parted --script /dev/$disk mklabel gpt
 
-    # Si l'utilisateur accepte, procéder à la création des partitions
-    echo "Procédure de création des partitions en cours..."
+    # Créer chaque partition
+    for part in "${PARTITIONS[@]}"; do
+        IFS=':' read -r name size type <<< "$part"
+        local device="/dev/${disk}${partition_prefix}${partition_num}"
+        local end=$([ "$size" = "100%" ] && echo "100%" || echo "$(convert_to_mib "$size")MiB")
 
-    # Création de la table de partitions
-    log_prompt "INFO" && echo "Création de la table GPT"
-    parted --script -a optimal /dev/$disk mklabel gpt || { echo "Erreur lors de la création de la table GPT"; exit 1; }
+        # Créer la partition
+        parted --script -a optimal /dev/$disk mkpart primary "$start" "$end"
 
-    local partition_prefix=$([[ "$disk_type" == "nvme" ]] && echo "p" || echo "")
-
-    # Boucle de création des partitions
-    for partition_info in "${PARTITIONS_CREATE[@]}"; do
-        IFS=':' read -r name size fs_type <<< "$partition_info"
-        
-        local partition_device="/dev/${disk}${partition_prefix}${partition_number}"
-
-        # Si la taille est "100%", utiliser l'espace restant
-        if [[ "$size" == "100%" ]]; then
-            # Utilisation de l'espace restant pour la partition
-            end="100%"
-        else
-            # Si ce n'est pas "100%", calculer la fin de la partition
-            local start_in_mib=$(convert_to_mib "$start")
-            local size_in_mib=$(convert_to_mib "$size")
-            local end_in_mib=$((start_in_mib + size_in_mib))
-            end="${end_in_mib}MiB"
-        fi
-
-        log_prompt "INFO" && echo "Création de la partition $partition_device"
-        parted --script -a optimal "/dev/$disk" mkpart primary "$start" "$end" || { 
-            echo "Erreur lors de la création de la partition $partition_device"
-            exit 1 
-        }
-
-        # Gestion des flags spécifiques
+        # Configurer les flags et formater
         case "$name" in
-            "boot") 
-                log_prompt "INFO" && echo "Activation de la partition boot $partition_device en mode UEFI"
-                parted --script -a optimal "/dev/$disk" set "$partition_number" esp on || { 
-                    echo "Erreur lors de l'activation de la partition $partition_device"
-                    exit 1 
-                }
+            "boot")
+                parted --script /dev/$disk set "$partition_num" esp on
+                mkfs.vfat -F32 -n "$name" "$device"
                 ;;
-
-            "swap") 
-                log_prompt "INFO" && echo "Activation de la partition swap $partition_device"
-                parted --script -a optimal "/dev/$disk" set "$partition_number" swap on || { 
-                    echo "Erreur lors de l'activation de la partition $partition_device"
-                    exit 1 
-                }
+            "swap")
+                parted --script /dev/$disk set "$partition_num" swap on
+                mkswap -L "$name" "$device" && swapon "$device"
                 ;;
-        esac
-
-        # Formatage des partitions
-        log_prompt "INFO" && echo "Formatage de la partition $partition_device en $fs_type"
-        case "$fs_type" in
-            "btrfs")
-                mkfs.btrfs -f -L "$name" "$partition_device" || {
-                    log_prompt "ERROR" && echo "Erreur lors du formatage de la partition $partition_device en $fs_type"
-                    exit 1
-                }
-                ;;
-
-            "fat32")
-                mkfs.vfat -F32 -n "$name" "$partition_device" || {
-                    log_prompt "ERROR" && echo "Erreur lors du formatage de la partition $partition_device en $fs_type"
-                    exit 1
-                }
-                ;;
-
-            "linux-swap")
-                mkswap -L "$name" "$partition_device" && swapon "$partition_device" || {
-                    log_prompt "ERROR" && echo "Erreur lors du formatage ou de l'activation de la partition $partition_device en $fs_type"
-                    exit 1
-                }
-                ;;
-
-            *)
-                log_prompt "ERROR" && echo "type de fichier non reconnu : $fs_type"
-                exit 1
+            "root")
+                mkfs.btrfs -f -L "$name" "$device"
                 ;;
         esac
 
         start="$end"
-        ((partition_number++))
+        ((partition_num++))
     done
 
+    echo "Partitionnement terminé avec succès"
 }
+
+# preparation_disk() {
+#     local disk="$1"
+#     local disk_type=$(detect_disk_type "$disk")
+#     local partition_number=1
+#     local start="1MiB"
+
+#     # Affichage des informations de configuration
+#     echo "Configuration actuelle :"
+#     echo "----------------------------"
+#     echo "Zone : $ZONE"
+#     echo "Pays : $PAYS"
+#     echo "Ville : $CITY"
+#     echo "Langue : $LANG"
+#     echo "Locale : $LOCALE"
+#     echo "Disposition du clavier : $KEYMAP"
+#     echo "Nom d'hôte : $HOSTNAME"
+#     echo "Port SSH : $SSH_PORT"
+#     echo
+#     echo "Point de montage principal : $MOUNT_POINT"
+#     echo "Mode de démarrage détecté : $MODE"
+#     echo "Chargeur de démarrage utilisé : $BOOTLOADER"
+#     echo
+
+#     echo "Partitions à créer :"
+#     echo "----------------------------"
+#     for partition in "${PARTITIONS_CREATE[@]}"; do
+#         IFS=":" read -r name size fstype <<< "$partition"
+#         echo "==> Partition : $name - Taille : $size - Type : $fstype"
+#     done
+
+#     echo "----------------------------"
+#     echo
+#     echo "Veuillez vérifier les informations ci-dessus avant de continuer."
+#     log_prompt "INFO" && echo "Vous pouvez modifier le fichier config.sh pour adapter la configuration selon vos besoins."
+#     echo
+#     # Demander confirmation à l'utilisateur pour procéder à la création des partitions
+#     log_prompt "INFO" && read -rp "Souhaitez-vous continuer avec cette configuration ? (y/n) : " user_input
+
+#     if [[ "$user_input" != "y" && "$user_input" != "Y" ]]; then
+#         echo "Annulation du processus. Aucune partition n'a été créée."
+#         exit 1
+#     fi
+
+#     # Si l'utilisateur accepte, procéder à la création des partitions
+#     echo "Procédure de création des partitions en cours..."
+
+#     # Création de la table de partitions
+#     log_prompt "INFO" && echo "Création de la table GPT"
+#     parted --script -a optimal /dev/$disk mklabel gpt || { echo "Erreur lors de la création de la table GPT"; exit 1; }
+
+#     local partition_prefix=$([[ "$disk_type" == "nvme" ]] && echo "p" || echo "")
+
+#     # Boucle de création des partitions
+#     for partition_info in "${PARTITIONS_CREATE[@]}"; do
+#         IFS=':' read -r name size fs_type <<< "$partition_info"
+        
+#         local partition_device="/dev/${disk}${partition_prefix}${partition_number}"
+
+#         # Si la taille est "100%", utiliser l'espace restant
+#         if [[ "$size" == "100%" ]]; then
+#             # Utilisation de l'espace restant pour la partition
+#             end="100%"
+#         else
+#             # Si ce n'est pas "100%", calculer la fin de la partition
+#             local start_in_mib=$(convert_to_mib "$start")
+#             local size_in_mib=$(convert_to_mib "$size")
+#             local end_in_mib=$((start_in_mib + size_in_mib))
+#             end="${end_in_mib}MiB"
+#         fi
+
+#         log_prompt "INFO" && echo "Création de la partition $partition_device"
+#         parted --script -a optimal "/dev/$disk" mkpart primary "$start" "$end" || { 
+#             echo "Erreur lors de la création de la partition $partition_device"
+#             exit 1 
+#         }
+
+#         # Gestion des flags spécifiques
+#         case "$name" in
+#             "boot") 
+#                 log_prompt "INFO" && echo "Activation de la partition boot $partition_device en mode UEFI"
+#                 parted --script -a optimal "/dev/$disk" set "$partition_number" esp on || { 
+#                     echo "Erreur lors de l'activation de la partition $partition_device"
+#                     exit 1 
+#                 }
+#                 ;;
+
+#             "swap") 
+#                 log_prompt "INFO" && echo "Activation de la partition swap $partition_device"
+#                 parted --script -a optimal "/dev/$disk" set "$partition_number" swap on || { 
+#                     echo "Erreur lors de l'activation de la partition $partition_device"
+#                     exit 1 
+#                 }
+#                 ;;
+#         esac
+
+#         # Formatage des partitions
+#         log_prompt "INFO" && echo "Formatage de la partition $partition_device en $fs_type"
+#         case "$fs_type" in
+#             "btrfs")
+#                 mkfs.btrfs -f -L "$name" "$partition_device" || {
+#                     log_prompt "ERROR" && echo "Erreur lors du formatage de la partition $partition_device en $fs_type"
+#                     exit 1
+#                 }
+#                 ;;
+
+#             "fat32")
+#                 mkfs.vfat -F32 -n "$name" "$partition_device" || {
+#                     log_prompt "ERROR" && echo "Erreur lors du formatage de la partition $partition_device en $fs_type"
+#                     exit 1
+#                 }
+#                 ;;
+
+#             "linux-swap")
+#                 mkswap -L "$name" "$partition_device" && swapon "$partition_device" || {
+#                     log_prompt "ERROR" && echo "Erreur lors du formatage ou de l'activation de la partition $partition_device en $fs_type"
+#                     exit 1
+#                 }
+#                 ;;
+
+#             *)
+#                 log_prompt "ERROR" && echo "type de fichier non reconnu : $fs_type"
+#                 exit 1
+#                 ;;
+#         esac
+
+#         start="$end"
+#         ((partition_number++))
+#     done
+
+# }
 
 mount_partitions() {
     

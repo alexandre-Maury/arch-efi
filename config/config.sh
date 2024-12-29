@@ -2,6 +2,10 @@
 
 # script config.sh
 
+##############################################################################
+## Toute modification incorrecte peut entraîner des perturbations lors de l'installation                                                             
+##############################################################################
+
 ZONE="Europe"
 PAYS="France"
 CITY="Paris"
@@ -11,9 +15,7 @@ KEYMAP="fr"
 HOSTNAME="archlinux-alexandre"
 SSH_PORT=2222  # Remplacez 2222 par le port que vous souhaitez utiliser
 
-MOUNT_POINT="/mnt" # Point de montage
-
-## Toute modification incorrecte peut entraîner des perturbations lors de l'installation                                          
+MOUNT_POINT="/mnt" # Point de montage                                      
 DEFAULT_BOOT_TYPE="fat32"
 DEFAULT_SWAP_TYPE="linux-swap"
 DEFAULT_FS_TYPE="btrfs"

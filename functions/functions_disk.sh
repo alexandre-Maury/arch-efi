@@ -2,34 +2,6 @@
 
 # script functions_disk.sh
 
-# Fonction pour convertir les tailles en MiB
-# convert_to_mib() {
-#     local size="$1"
-#     local numeric_size
-
-#     # Si la taille est en GiB, on la convertit en MiB (1GiB = 1024MiB)
-#     if [[ "$size" =~ ^[0-9]+GiB$ ]]; then
-#         numeric_size=$(echo "$size" | sed 's/GiB//')
-#         echo $(($numeric_size * 1024))  # Convertir en MiB
-#     # Si la taille est en GiB avec "G", convertir aussi en MiB
-#     elif [[ "$size" =~ ^[0-9]+G$ ]]; then
-#         numeric_size=$(echo "$size" | sed 's/G//')
-#         echo $(($numeric_size * 1024))  # Convertir en MiB
-#     elif [[ "$size" =~ ^[0-9]+MiB$ ]]; then
-#         # Si la taille est déjà en MiB, on la garde telle quelle
-#         echo "$size" | sed 's/MiB//'
-#     elif [[ "$size" =~ ^[0-9]+M$ ]]; then
-#         # Si la taille est en Mo (en utilisant 'M'), convertir en MiB (1 Mo = 1 MiB dans ce contexte)
-#         numeric_size=$(echo "$size" | sed 's/M//')
-#         echo "$numeric_size"
-#     elif [[ "$size" =~ ^[0-9]+%$ ]]; then
-#         # Si la taille est un pourcentage, retourner "100%" directement
-#         echo "$size"
-#     else
-#         echo "0"  # Retourne 0 si l'unité est mal définie
-#     fi
-# }
-
 # Convertit les tailles en MiB
 convert_to_mib() {
     local size="$1"
@@ -53,27 +25,6 @@ convert_to_mib() {
 get_disk_prefix() {
     [[ "$1" == nvme* ]] && echo "p" || echo ""
 }
-
-# detect_disk_type() {
-#     local disk="$1"
-#     case "$disk" in
-#         nvme*)
-#             echo "nvme"
-#             ;;
-#         sd*)
-#             # Test supplémentaire pour distinguer SSD/HDD
-#             local rotational=$(cat "/sys/block/$disk/queue/rotational" 2>/dev/null)
-#             if [[ "$rotational" == "0" ]]; then
-#                 echo "ssd"
-#             else
-#                 echo "hdd"
-#             fi
-#             ;;
-#         *)
-#             echo "basic"
-#             ;;
-#     esac
-# }
 
 # Fonction pour formater l'affichage de la taille d'une partition en GiB ou MiB
 format_space() {
@@ -343,114 +294,3 @@ mount_partitions() {
         mount "/dev/$boot_part" "${MOUNT_POINT}/boot"
     fi
 }
-
-# mount_partitions() {
-    
-#     local disk="$1"
-#     local partitions=()
-#     local root_partition=""
-#     local boot_partition=""
-#     local home_partition=""
-#     local other_partitions=()
-
-#     # Récupération des partitions du disque
-#     while IFS= read -r partition; do
-#         partitions+=("$partition")
-#     done < <(lsblk -n -o NAME "/dev/$disk" | grep -v "^$disk$" | sed -n "s/^[[:graph:]]*${disk}\([0-9]*\)$/${disk}\1/p")
-
-#     # Trier et organiser les partitions
-#     for part in "${partitions[@]}"; do
-#         local part_label=$(lsblk "/dev/$part" -n -o LABEL)
-#         case "$part_label" in
-#             "root") 
-#                 root_partition="$part"
-#                 ;;
-#             "boot") 
-#                 boot_partition="$part"
-#                 ;;
-#             "home")
-#                 home_partition="$part"
-#                 ;;
-#             *)
-#                 other_partitions+=("$part")
-#                 ;;
-#         esac
-#     done
-
-#     # Monter la partition root EN PREMIER
-#     if [[ -n "$root_partition" ]]; then
-#         local NAME=$(lsblk "/dev/$root_partition" -n -o NAME)
-#         local FSTYPE=$(lsblk "/dev/$root_partition" -n -o FSTYPE)
-#         local LABEL=$(lsblk "/dev/$root_partition" -n -o LABEL)
-#         local SIZE=$(lsblk "/dev/$root_partition" -n -o SIZE)
-
-#         log_prompt "INFO" && echo "Traitement de la partition : /dev/$NAME (Label: $LABEL, FS: $FSTYPE)"
-
-#         # Logique de montage de la partition root (identique à votre script original)
-           
-#         mount "/dev/$NAME" "${MOUNT_POINT}"
-
-#         # Créer les sous-volumes de base
-#         btrfs subvolume create "${MOUNT_POINT}/@"
-#         btrfs subvolume create "${MOUNT_POINT}/@root"
-#         btrfs subvolume create "${MOUNT_POINT}/@home"
-#         btrfs subvolume create "${MOUNT_POINT}/@srv"
-#         btrfs subvolume create "${MOUNT_POINT}/@log"
-#         btrfs subvolume create "${MOUNT_POINT}/@cache"
-#         btrfs subvolume create "${MOUNT_POINT}/@tmp"
-#         btrfs subvolume create "${MOUNT_POINT}/@snapshots"
-            
-#         # Démonter la partition temporaire
-#         umount "${MOUNT_POINT}"
-
-#         # Remonter les sous-volumes avec des options spécifiques
-#         echo "Montage des sous-volumes Btrfs avec options optimisées..."
-#         mount -o defaults,noatime,compress=zstd,commit=120,subvol=@ "/dev/$NAME" "${MOUNT_POINT}"
-
-#         # Créer les sous-répertoires
-#         mkdir -p "${MOUNT_POINT}/root"
-#         mkdir -p "${MOUNT_POINT}/home"
-#         mkdir -p "${MOUNT_POINT}/srv"
-#         mkdir -p "${MOUNT_POINT}/var/log"
-#         mkdir -p "${MOUNT_POINT}/var/cache/"
-#         mkdir -p "${MOUNT_POINT}/tmp"
-#         mkdir -p "${MOUNT_POINT}/snapshots"
-
-#         # Montage des sous-volumes
-#         mount -o defaults,noatime,compress=zstd,commit=120,subvol=@root "/dev/$NAME" "${MOUNT_POINT}/root"
-#         mount -o defaults,noatime,compress=zstd,commit=120,subvol=@home "/dev/$NAME" "${MOUNT_POINT}/home"
-#         mount -o defaults,noatime,compress=zstd,commit=120,subvol=@tmp "/dev/$NAME" "${MOUNT_POINT}/tmp"
-#         mount -o defaults,noatime,compress=zstd,commit=120,subvol=@srv "/dev/$NAME" "${MOUNT_POINT}/srv"
-#         mount -o defaults,noatime,compress=zstd,commit=120,subvol=@log "/dev/$NAME" "${MOUNT_POINT}/var/log"
-#         mount -o defaults,noatime,compress=zstd,commit=120,subvol=@cache "/dev/$NAME" "${MOUNT_POINT}/var/cache"
-#         mount -o defaults,noatime,compress=zstd,commit=120,subvol=@snapshots "/dev/$NAME" "${MOUNT_POINT}/snapshots"
-#     fi
-
-#     # Monter la partition boot 
-#     if [[ -n "$boot_partition" ]]; then
-#         local NAME=$(lsblk "/dev/$boot_partition" -n -o NAME)
-#         mkdir -p "${MOUNT_POINT}/boot"
-#         mount "/dev/$NAME" "${MOUNT_POINT}/boot"
-#     fi
-
-#     # Monter la partition home 
-#     if [[ -n "$home_partition" ]]; then
-#         local NAME=$(lsblk "/dev/$home_partition" -n -o NAME)
-#         mkdir -p "${MOUNT_POINT}/home"  
-#         mount "/dev/$NAME" "${MOUNT_POINT}/home"
-#     fi
-
-#     # Monter les autres partitions
-#     for partition in "${other_partitions[@]}"; do
-#         local part_label=$(lsblk "/dev/$partition" -n -o LABEL)
-        
-#         # Ignorer la partition swap
-#         if [[ "$part_label" == "swap" ]]; then
-#             log_prompt "INFO" && echo "Partition swap déjà monté"
-#             continue
-#         fi
-
-#         # Ajouter ici toute logique supplémentaire pour d'autres partitions étiquetées différemment
-#         log_prompt "WARNING" && echo "Partition non traitée : /dev/$partition (Label: $part_label)"
-#     done
-# }

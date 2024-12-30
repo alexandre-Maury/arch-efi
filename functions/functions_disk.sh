@@ -195,6 +195,8 @@ preparation_disk() {
         printf "%-10s %-10s %-10s\n" "$name" "$size" "$type"
     done
     echo
+    echo "Vous pouvez modifier le fichier config.sh pour adapter la configuration selon vos besoins."
+    echo
     read -rp "Continuer ? (y/n): " confirm
     [[ "$confirm" != [yY] ]] && exit 1
 

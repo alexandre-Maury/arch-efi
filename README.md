@@ -4,16 +4,14 @@ Un script d'installation d'Arch Linux en mode UEFI, conçu pour automatiser les 
 Il prend en charge le partitionnement GPT, l'installation des paquets de base, la configuration du système et le déploiement du chargeur de démarrage systemd-boot. 
 Le script est optimisé pour un système de fichiers btrfs unique.
 
-
+⚠️ Ce script reste en cours d'amélioration. De nouvelles fonctionnalités et optimisations sont régulièrement ajoutées pour répondre aux besoins des utilisateurs.
 
 ## Processus automatisé
-
-Détection du disque : Identifie le disque cible (par exemple, /dev/sda) pour appliquer le partitionnement GPT.
 
 Utilise une table de partition GPT pour garantir la compatibilité avec les systèmes UEFI.
 Partitionnement basé sur des valeurs prédéfinies et modifiables via un fichier de configuration (config.sh).
 
-Le script utilise btrfs comme système de fichiers exclusif pour la partition racine, garantissant des fonctionnalités modernes telles que la compression, les sous-volumes et les snapshots.
+Le script utilise btrfs comme système de fichiers exclusif pour la partition racine, garantissant des fonctionnalités modernes telles que la compression, les sous-volumes et les snapshots. Il identifie automatiquement les disque cible (par exemple, /dev/sda) dans un choix proposé à l'utilisateur.
 
 Les partitions sont configurées comme suit :
 
@@ -40,7 +38,7 @@ Les partitions sont configurées comme suit :
 ### Montage des partitions :
 
 La partition EFI est montée dans /mnt/boot.
-La partition ROOT est montée dans /mnt avec des sous-volumes optionnels si activés. Modifiables via le fichier de configuration (config.sh)
+La partition ROOT est montée dans /mnt avec des sous-volumes optionnels définis dans config.sh :
 
     # Liste des sous-volumes BTRFS à créer
     BTRFS_SUBVOLUMES=("@" "@root" "@home" "@srv" "@log" "@cache" "@tmp" "@snapshots")
@@ -54,7 +52,7 @@ Installation des paquets essentiels d'Arch Linux (base, linux, linux-firmware, e
     
 ### Configuration système :
     
-Locales, fuseau horaire, clavier, réseau et autres paramètres : modifiables via le fichier de configuration (config.sh)
+Les locales, le fuseau horaire, le clavier, le réseau et d'autres paramètres sont modifiables dans config.sh :
 
     ZONE="Europe"
     PAYS="France"
@@ -66,7 +64,7 @@ Locales, fuseau horaire, clavier, réseau et autres paramètres : modifiables vi
 
 ### Chargeur de démarrage :
     
-Déploiement et configuration de systemd-boot en mode EFI.
+Déploie et configure systemd-boot en mode EFI pour garantir une compatibilité optimale avec les systèmes modernes.
 
 ## Instructions d'utilisation
 
@@ -75,7 +73,7 @@ Clonez le dépôt contenant le script :
     git clone https://github.com/alexandre-Maury/arch-efi.git
     cd arch-efi
 
-Modifiez le fichier config.sh selon vos besoins présent dans le dossier config :
+Modifiez le fichier config.sh selon vos besoins (présent dans le dossier config) :
 
     nano config.sh
 
@@ -85,8 +83,10 @@ Lancez le script d'installation :
 
 ## Points forts
 
-Optimisé pour btrfs : Le script exploite les avantages de btrfs, tels que les sous-volumes, la compression, et les snapshots.
+Optimisé pour btrfs : Exploite les avantages de btrfs, tels que les sous-volumes, la compression, et les snapshots.
 Flexibilité : Personnalisation simple via config.sh.
 Compatibilité UEFI : Conçu pour fonctionner avec les systèmes modernes utilisant le mode UEFI.
 Simplicité : Automatisation complète de l'installation de base d'Arch Linux.
+
+⚠️ Améliorations en cours : Ce script évolue constamment pour intégrer de nouvelles fonctionnalités, améliorer l'ergonomie et renforcer sa robustesse. N'hésitez pas à proposer des idées ou signaler des problèmes via le dépôt GitHub.
 

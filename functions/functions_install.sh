@@ -267,7 +267,9 @@ install_base_secu() {
     if [[ "$pass_root" =~ ^[yY]$ ]]; then
         # Demande de changer le mot de passe root
         while true; do
+            clear
             read -p "Veuillez entrer le nouveau mot de passe pour root : " -s new_pass 
+            echo
             read -p "Confirmez le mot de passe : " -s confirm_pass 
 
             # Vérifie si les mots de passe correspondent
@@ -304,7 +306,9 @@ install_base_secu() {
 
         # Demande de changer le mot de passe $USER
         while true; do
+            clear
             read -p "Veuillez entrer le nouveau mot de passe pour $sudo_user : " -s new_pass  
+            echo
             read -p "Confirmez le mot de passe : " -s confirm_pass  
 
             # Vérifie si les mots de passe correspondent
@@ -328,6 +332,7 @@ install_base_secu() {
 }
 
 activate_service() {
+    clear
     log_prompt "INFO" && echo "arch-chroot - Activation des services"
     arch-chroot ${MOUNT_POINT} systemctl enable sshd
     arch-chroot ${MOUNT_POINT} systemctl enable systemd-homed

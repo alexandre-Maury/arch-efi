@@ -17,12 +17,12 @@ Les partitions sont configurées comme suit :
 
 ### Exemple de configuration des partitions dans config.sh
 
-DEFAULT_BOOT_SIZE="512MiB"
-DEFAULT_SWAP_SIZE="8GiB"
-DEFAULT_FS_SIZE="100%"
+    DEFAULT_BOOT_SIZE="512MiB"
+    DEFAULT_SWAP_SIZE="8GiB"
+    DEFAULT_FS_SIZE="100%"
 
-PARTITIONS_CREATE=(
-    "boot:${DEFAULT_BOOT_SIZE}:fat32"
-    "swap:${DEFAULT_SWAP_SIZE}:linux-swap"
-    "root:${DEFAULT_FS_SIZE}:btrfs"
-)
+    PARTITIONS_CREATE=(
+        "boot:${DEFAULT_BOOT_SIZE}:fat32"
+        "swap:${DEFAULT_SWAP_SIZE}:linux-swap"
+        "root:${DEFAULT_FS_SIZE}:btrfs"
+    )

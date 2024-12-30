@@ -4,6 +4,8 @@ Un script d'installation d'Arch Linux en mode UEFI, conçu pour automatiser les 
 Il prend en charge le partitionnement GPT, l'installation des paquets de base, la configuration du système et le déploiement du chargeur de démarrage systemd-boot. 
 Le script est optimisé pour un système de fichiers btrfs unique.
 
+
+
 ## Processus automatisé
 
 Détection du disque : Identifie le disque cible (par exemple, /dev/sda) pour appliquer le partitionnement GPT.
@@ -65,3 +67,19 @@ Locales, fuseau horaire, clavier, réseau et autres paramètres : modifiables vi
 ### Chargeur de démarrage :
     
 Déploiement et configuration de systemd-boot en mode EFI.
+
+## Instructions d'utilisation
+
+Clonez le dépôt contenant le script :
+
+    git clone https://github.com/alexandre-Maury/arch-efi.git
+    cd arch-efi
+
+Modifiez le fichier config.sh selon vos besoins présent dans le dossier config :
+
+    nano config.sh
+
+Lancez le script d'installation :
+
+    chmod +x install.sh && ./install.sh
+

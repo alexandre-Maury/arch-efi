@@ -83,3 +83,10 @@ Lancez le script d'installation :
 
     chmod +x install.sh && ./install.sh
 
+## Points forts
+
+Optimisé pour btrfs : Le script exploite les avantages de btrfs, tels que les sous-volumes, la compression, et les snapshots.
+Flexibilité : Personnalisation simple via config.sh.
+Compatibilité UEFI : Conçu pour fonctionner avec les systèmes modernes utilisant le mode UEFI.
+Simplicité : Automatisation complète de l'installation de base d'Arch Linux.
+

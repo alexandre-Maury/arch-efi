@@ -90,3 +90,11 @@ Simplicité : Automatisation complète de l'installation de base d'Arch Linux.
 
 ⚠️ Améliorations en cours : Ce script évolue constamment pour intégrer de nouvelles fonctionnalités, améliorer l'ergonomie et renforcer sa robustesse. N'hésitez pas à proposer des idées ou signaler des problèmes via le dépôt GitHub.
 
+## Auteurs
+
+    Alexandre MAURY
+
+## Contribution
+
+    Alexandre MAURY
+

@@ -222,14 +222,6 @@ install_base_secu() {
     local min_3classes="4"   # Longueur minimale pour un mot de passe avec trois classes de caractères, comme minuscules + majuscules + chiffres (ex. : "Abc123").
     local min_4classes="4"   # Longueur minimale pour un mot de passe avec quatre classes de caractères, incluant minuscules + majuscules + chiffres + caractères spéciaux (ex. : "Abc123!").
     local min_phrase="4"     # Longueur minimale pour une phrase de passe, qui est généralement une suite de plusieurs mots ou une longue chaîne de caractères (ex. : "monmotdepassecompliqué").
-    local min="$min_simple,$min_2classes,$min_3classes,$min_4classes,$min_phrase"
-    local max="72"           # Définit la longueur maximale autorisée pour un mot de passe. Dans cet exemple, un mot de passe ne peut pas dépasser 72 caractères.
-    local passphrase="3"     # Définit la longueur minimale pour une phrase de passe en termes de nombre de mots. Ici, une phrase de passe doit comporter au moins 3 mots distincts pour être considérée comme valide.
-    local match="4"          # Ce paramètre détermine la longueur minimale des segments de texte qui doivent correspondre entre deux chaînes pour être considérées comme similaires.
-    local similar="permit"   # Valeurs : permit ou deny : Définit la politique en matière de similitude entre le mot de passe et d'autres informations (par exemple, le nom de l'utilisateur).
-    local random="47"
-    local enforce="everyone" # Valeurs : none ou users ou everyone : Ce paramètre applique les règles de complexité définies à tous les utilisateurs.
-    local retry="3"          # Ce paramètre permet à l'utilisateur de réessayer jusqu'à 3 fois pour entrer un mot de passe conforme si le mot de passe initial proposé est refusé. 
     local ssh_config_file="/etc/ssh/sshd_config"
 
     log_prompt "INFO" && echo "Configuration de passwdqc.conf" && echo ""
@@ -240,15 +232,15 @@ install_base_secu() {
     log_prompt "INFO" && echo "Création ou modification du fichier passwdqc.conf dans ${MOUNT_POINT}${passwdqc_conf}" && echo 
 
     {
-        echo "min=$min"
-        echo "max=$max"
+        echo "min=$min_simple,$min_2classes,$min_3classes,$min_4classes,$min_phrase"
+        echo "max=72"
         echo "console-mode max"
         echo "editor no"
-        echo "passphrase=$passphrase"
-        echo "match=$match"
-        echo "similar=$similar"
-        echo "enforce=$enforce"
-        echo "retry=$retry"
+        echo "passphrase=3"
+        echo "match=4"
+        echo "similar=permit"
+        echo "enforce=everyone"
+        echo "retry=3"
     } > ${MOUNT_POINT}${passwdqc_conf}
 
     ## arch-chroot Création d'un mot de passe root                                             
